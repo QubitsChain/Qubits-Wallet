@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Qubits Wallet</title>
+    <script type="module" src="/src/popup.ts"></script>
+  </head>
+  <body>
+    <div id="stage" aria-hidden="true"></div>
+    <header class="flex items-start justify-between gap-4 pt-5 pb-3">
+      <div class="min-w-0">
+        <span class="block font-display text-[1.45rem] leading-none">qubits</span>
+        <span id="chain" class="mt-1.5 block truncate font-display text-[0.72rem] text-soft">wallet</span>
+      </div>
+      <div class="mt-0.5 flex min-w-0 shrink-0 items-center gap-1.5">
+        <button id="who" type="button" class="quiet max-w-[6.5rem] truncate px-3 py-1 text-[0.8rem]" hidden></button>
+        <button id="out" type="button" class="quiet px-2.5 py-1 text-[0.75rem]" hidden>Log out</button>
+      </div>
+    </header>
+    <main id="app" aria-live="polite">
+      <p class="mt-8 font-display text-[0.8rem] text-soft">loading…</p>
+    </main>
+    <p id="status" class="mt-0 min-h-[1.5em] border-t border-rule pt-2.5 pb-4 font-mono text-[0.72rem] text-soft" role="status"></p>
+  </body>
+</html>

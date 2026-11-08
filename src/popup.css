@@ -1,0 +1,251 @@
+/* "Ink Drop": black ground, one
+   ultramarine drop with a liquid edge that moves from screen to screen, thin type. What changed
+   since the first build, at the user's wish: controls are pills (one filled per screen), and
+   fields are boxes. Element defaults live here; the rest is utility classes in popup.ts. */
+
+@import "tailwindcss";
+@import "@fontsource/poiret-one/400.css";
+@import "@fontsource/jura/400.css";
+@import "@fontsource/jura/500.css";
+@import "@fontsource/jura/600.css";
+@import "@fontsource/dm-mono/400.css";
+
+@theme {
+  --color-night: #050508;
+  --color-ink: #121e78;
+  --color-ink-dim: #16181e;
+  --color-accent: #3b4ee6;
+  --color-accent-2: #5468f5;
+  --color-bone: #f5f5fa;
+  --color-soft: #8c92aa;
+  --color-tint: #aab4e6;
+  --color-rule: #282c3c;
+  --color-serial: #e86054;
+  --color-ready: #8fd3ab;
+  --font-display: "Poiret One", "Avenir Next", sans-serif;
+  --font-sans: "Jura", "Avenir Next", sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  /* a fixed 360×600 window: header and status stay, the middle scrolls over the drop */
+  body {
+    @apply relative flex h-[600px] w-[360px] flex-col overflow-hidden bg-night px-5 font-sans text-[13.5px] leading-normal text-bone;
+    color-scheme: dark;
+  }
+
+  header,
+  #status {
+    @apply relative z-10 shrink-0;
+  }
+
+  #app {
+    @apply relative z-10 min-h-0 flex-1 overflow-y-auto pb-4 pr-1;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule) transparent;
+    scrollbar-gutter: stable;
+  }
+
+  #app::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  #app::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  #app::-webkit-scrollbar-thumb {
+    background: var(--color-rule);
+    border-radius: 2px;
+  }
+
+  #app::-webkit-scrollbar-thumb:hover {
+    background: var(--color-soft);
+  }
+
+  #stage {
+    @apply pointer-events-none absolute inset-0 z-0 overflow-hidden;
+  }
+
+  h1 {
+    @apply mt-6 mb-2 font-display text-[1.7rem] leading-tight font-normal;
+  }
+
+  p {
+    @apply my-1.5;
+  }
+
+  form {
+    @apply mt-4 grid gap-5;
+  }
+
+  /* fields are boxes: a faint well with a hairline edge, a tint ring when focused */
+  input,
+  select,
+  textarea {
+    @apply w-full rounded-xl border border-white/12 bg-white/[0.04] px-3.5 py-2.5 font-mono text-[0.82rem] text-bone;
+    font-family: var(--font-mono);
+    transition:
+      border-color 150ms,
+      box-shadow 150ms;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    @apply border-tint/70 outline-none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-tint) 18%, transparent);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-soft/50;
+  }
+
+  select {
+    @apply cursor-pointer appearance-none bg-no-repeat pr-9 font-sans text-[0.85rem];
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238c92aa' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-position: right 14px center;
+  }
+
+  select option {
+    @apply bg-[#0e1020] text-bone;
+  }
+
+  input[type="file"] {
+    @apply border-dashed font-sans text-[0.8rem] text-soft;
+  }
+
+  input[type="file"]::file-selector-button {
+    @apply mr-3 cursor-pointer rounded-full border border-white/15 bg-white/5 px-3 py-1 font-sans text-[0.8rem] font-medium text-bone;
+  }
+
+  /* a link in text; a link that is a pill (.pill) looks like a button */
+  a {
+    @apply text-tint underline decoration-tint/40 underline-offset-2;
+  }
+
+  a:hover {
+    @apply decoration-tint;
+  }
+
+  /* controls are pills: a hairline edge, and one of them per screen is filled */
+  button,
+  a.pill {
+    @apply inline-flex cursor-pointer items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 font-sans text-[0.9rem] leading-tight font-medium text-bone;
+    transition:
+      background-color 150ms,
+      border-color 150ms,
+      color 150ms,
+      transform 120ms;
+  }
+
+  a.pill {
+    @apply text-bone no-underline;
+  }
+
+  button:hover:not(:disabled),
+  a.pill:hover {
+    @apply border-white/30 bg-white/[0.08] text-bone;
+  }
+
+  button:active:not(:disabled),
+  a.pill:active {
+    transform: scale(0.98);
+  }
+
+  button:disabled {
+    @apply cursor-progress opacity-50;
+  }
+
+  button[type="submit"] {
+    @apply border-transparent font-semibold text-white;
+    background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent));
+    box-shadow: 0 8px 24px -10px color-mix(in oklab, var(--color-accent) 80%, transparent);
+  }
+
+  button[type="submit"]:hover:not(:disabled) {
+    @apply border-transparent;
+    background: linear-gradient(180deg, #6477ff, #4a5cf0);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-tint);
+    outline-offset: 3px;
+  }
+
+  /* the drop: a blurred disc on the stage behind the content. It is one element that moves
+     from screen to screen: the only motion besides what answers a click. */
+  .drop {
+    @apply absolute rounded-full bg-ink;
+    filter: blur(26px);
+    transition:
+      left 0.7s,
+      top 0.7s,
+      width 0.7s,
+      height 0.7s,
+      background-color 0.7s;
+    transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drop,
+    button,
+    a.pill,
+    input,
+    select,
+    textarea {
+      transition: none;
+    }
+
+    button:active:not(:disabled),
+    a.pill:active {
+      transform: none;
+    }
+  }
+}
+
+@layer components {
+  /* the one filled pill on a screen that has no form */
+  .primary {
+    @apply border-transparent font-semibold text-white;
+    background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent));
+    box-shadow: 0 8px 24px -10px color-mix(in oklab, var(--color-accent) 80%, transparent);
+  }
+
+  .primary:hover:not(:disabled) {
+    @apply border-transparent;
+    background: linear-gradient(180deg, #6477ff, #4a5cf0);
+  }
+
+  .quiet {
+    @apply border-white/10 bg-transparent text-soft;
+    background-image: none;
+    box-shadow: none;
+  }
+
+  .quiet:hover:not(:disabled) {
+    @apply border-white/25 bg-white/[0.04] text-bone;
+  }
+
+  .danger {
+    @apply border-serial/40 bg-serial/10 text-serial;
+    background-image: none;
+    box-shadow: none;
+  }
+
+  .danger:hover:not(:disabled) {
+    @apply border-serial/60 bg-serial/15 text-serial;
+  }
+
+  /* a control that is only words: a line in a list, a row */
+  .bare {
+    @apply justify-start rounded-none border-0 bg-transparent p-0 text-left font-normal;
+    background-image: none;
+    box-shadow: none;
+  }
+
+  .bare:hover:not(:disabled) {
+    @apply border-0 bg-transparent;
+  }
+}

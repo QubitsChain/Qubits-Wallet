@@ -1,0 +1,12 @@
+{
+  "chain_id": "qubits-devnet",
+  "genesis_hash": "eb919a21d0187891fc2fc97fbfb77084fa4c9ccaa6b161c65f3060ded7c4aa01",
+  "height": 4,
+  "latest_hash": "c8b90cb1caea38aa7ea87fd7baa68ad3503ddae07dae3af6fc2bc966ec726463",
+  "latest_timestamp_ms": 1793732320330,
+  "state_root": "8f48de61bc4a329f88f601780220546e886cfad06803ea5bfd6fbe759e182641",
+  "min_fee_per_byte": 1,
+  "mempool_size": 0,
+  "state_from": 0,
+  "blocks_from": 1
+}

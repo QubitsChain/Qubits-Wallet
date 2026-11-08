@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Qubits Wallet",
+  "version": "0.1.0",
+  "description": "Post-quantum wallet for the Qubits chain: ML-DSA and SLH-DSA keys.",
+  "minimum_chrome_version": "111",
+  "action": {
+    "default_popup": "dist/popup.html",
+    "default_title": "Qubits Wallet",
+    "default_icon": {
+      "16": "dist/icons/16.png",
+      "32": "dist/icons/32.png"
+    }
+  },
+  "icons": {
+    "16": "dist/icons/16.png",
+    "32": "dist/icons/32.png",
+    "48": "dist/icons/48.png",
+    "128": "dist/icons/128.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://qubits.sh/*",
+        "https://*.qubits.sh/*"
+      ],
+      "js": [
+        "dist/bridge.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://qubits.sh/*",
+        "https://*.qubits.sh/*"
+      ],
+      "js": [
+        "dist/provider.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}
