@@ -5,7 +5,7 @@
 //
 //   npm run build && node tests/site.mjs
 //
-// Needs that chain running, with `qusd` and `amm` in its contracts.txt. Pictures of the
+// Needs that chain running, with `token` and `amm` in its contracts.txt. Pictures of the
 // approval windows go to $TMPDIR/qubits-site (or SHOTS_OUT). EXTENSION tests another build, such
 // as an unpacked store zip.
 
@@ -32,7 +32,7 @@ const HTTP_PORT = 8744;
 
 const password = readFileSync(`${DEMO}/pw`, "utf8").trim();
 const contracts = readFileSync(`${DEMO}/contracts.txt`, "utf8");
-const QUSD = contracts.match(/^qusd (\S+)/m)[1];
+const TOKEN = contracts.match(/^token (\S+)/m)[1];
 const AMM = contracts.match(/^amm (\S+)/m)[1];
 const key = (file) => readFileSync(`${DEMO}/${file}`, "utf8");
 const addressOf = (file) =>
@@ -147,6 +147,16 @@ const shot = async (window, name) => {
 
 const text = (window) => window.evaluate(() => document.body.innerText);
 
+async function landed(tab, id) {
+  let seen;
+  for (let i = 0; i < 60; i++) {
+    seen = await ask(tab, "window.qubits.transaction", id);
+    if (seen.ok?.status === "included") break;
+    await wait(200);
+  }
+  return seen;
+}
+
 try {
   const worker = await browser.waitForTarget((t) => t.type() === "service_worker", { timeout: 15_000 });
   const id = new URL(worker.url()).host;
@@ -212,7 +222,7 @@ try {
 
   const app = await site("https://app.qubits.sh/");
   check("nothing is connected at first", (await ask(app, "window.qubits.accounts")).ok?.length === 0);
-  const early = await ask(app, "window.qubits.call", { contract: QUSD, function: "transfer", args: [ALICE, "1"] });
+  const early = await ask(app, "window.qubits.call", { contract: TOKEN, function: "transfer", args: [ALICE, "1"] });
   check("a call before connecting is refused", early.code === 4100, early);
   const chain = await ask(app, "window.qubits.chain");
   check("anyone here can read the chain", chain.ok?.genesis_hash === genesis_hash, chain);
@@ -268,15 +278,15 @@ try {
   const quote = await ask(app, "window.qubits.view", {
     contract: AMM,
     function: "quote",
-    args: ["native", QUSD, ONE_TOKEN],
+    args: ["native", TOKEN, ONE_TOKEN],
   });
   check("a site reads a contract through the wallet", quote.ok?.outcome === "done" && quote.ok.output.length === 32, quote);
 
   for (const [what, params] of [
-    ["init", { contract: QUSD, function: "init" }],
+    ["init", { contract: TOKEN, function: "init" }],
     ["a broken address", { contract: "qb1nope", function: "transfer" }],
-    ["a broken amount", { contract: QUSD, function: "transfer", args: [ALICE, "1"], amount: "lots" }],
-    ["an unreadable argument", { contract: QUSD, function: "transfer", args: ["what"] }],
+    ["a broken amount", { contract: TOKEN, function: "transfer", args: [ALICE, "1"], amount: "lots" }],
+    ["an unreadable argument", { contract: TOKEN, function: "transfer", args: ["what"] }],
   ]) {
     const bad = await ask(app, "window.qubits.call", params);
     check(`${what} never reaches a window`, bad.code === -32602, bad);
@@ -284,10 +294,10 @@ try {
   const unknown = await ask(app, "window.qubits.request", { method: "eth_sendTransaction" });
   check("what the wallet doesn't know, it says", unknown.code === 4200, unknown);
 
-  const poolBefore = await ask(app, "window.qubits.view", { contract: AMM, function: "pool", args: [QUSD, "native"] });
+  const poolBefore = await ask(app, "window.qubits.view", { contract: AMM, function: "pool", args: [TOKEN, "native"] });
 
   // what would fail doesn't get as far as an approve button
-  const failing = ask(app, "window.qubits.call", { contract: QUSD, function: "transfer", args: [ALICE, "99999999999999999999"] });
+  const failing = ask(app, "window.qubits.call", { contract: TOKEN, function: "transfer", args: [ALICE, "99999999999999999999"] });
   window = await approval();
   await untilButton(window, "Close");
   check("a call that would fail says why", /balance too low/.test(await text(window)));
@@ -300,27 +310,27 @@ try {
   const first = ask(app, "window.qubits.call", {
     contract: AMM,
     function: "swap",
-    args: ["native", QUSD, TWO_TOKENS, "1", "deadline:600"],
+    args: ["native", TOKEN, TWO_TOKENS, "1", "deadline:600"],
     amount: TWO_TOKENS,
   });
   window = await approval();
   await untilButton(window, "Approve");
-  const second = await ask(app, "window.qubits.call", { contract: QUSD, function: "transfer", args: [ALICE, "1"] });
+  const second = await ask(app, "window.qubits.call", { contract: TOKEN, function: "transfer", args: [ALICE, "1"] });
   check("a page can't stack up requests", second.code === 4900 && /already waiting/.test(second.message), second);
   const swapScreen = await text(window);
   check("the swap is shown from the simulation: what goes", /you pay\s+2 Qubits/i.test(swapScreen), swapScreen);
-  check("and what comes", /you get\s+[\d.]+ qUSD/i.test(swapScreen), swapScreen);
+  check("and what comes", /you get\s+[\d.,]+ EXT/i.test(swapScreen), swapScreen);
   await shot(window, "04-swap");
   await press(window, "Refuse");
   const noSwap = await first;
   check("a refused call sends nothing", noSwap.code === 4001, noSwap);
-  const unchanged = await ask(app, "window.qubits.view", { contract: AMM, function: "pool", args: [QUSD, "native"] });
+  const unchanged = await ask(app, "window.qubits.view", { contract: AMM, function: "pool", args: [TOKEN, "native"] });
   check("the pool didn't move", unchanged.ok?.output === poolBefore.ok?.output);
 
   const swapping = ask(app, "window.qubits.call", {
     contract: AMM,
     function: "swap",
-    args: ["native", QUSD, TWO_TOKENS, "1", "deadline:600"],
+    args: ["native", TOKEN, TWO_TOKENS, "1", "deadline:600"],
     amount: TWO_TOKENS,
   });
   window = await approval();
@@ -335,18 +345,57 @@ try {
     await wait(200);
   }
   check("and it lands on the chain, done", done.ok?.receipt?.outcome === "done", done);
-  const moved = await ask(app, "window.qubits.view", { contract: AMM, function: "pool", args: [QUSD, "native"] });
+  const moved = await ask(app, "window.qubits.view", { contract: AMM, function: "pool", args: [TOKEN, "native"] });
   check("the pool moved", moved.ok?.output !== poolBefore.ok?.output);
 
+  const making = ask(app, "window.qubits.call", {
+    contract: AMM,
+    function: "create",
+    args: ['"Quantum Cat"', '"QCAT"', "500"],
+    amount: ONE_TOKEN,
+  });
+  window = await approval();
+  await untilButton(window, "Approve");
+  const makeScreen = await text(window);
+  check("making a token shows what goes, less the launcher's share that comes back", /you pay\s+0\.9975 Qubits/i.test(makeScreen), makeScreen);
+  check("and what the first buy gets, of a token not made yet", /you get\s+[\d.,]+ (QCAT|of qb1)/i.test(makeScreen), makeScreen);
+  await shot(window, "04b-create");
+  await press(window, "Approve");
+  const made = await making;
+  await closed(window);
+  check("a token made through the wallet lands, done", (await landed(app, made.ok?.id)).ok?.receipt?.outcome === "done", made);
+
+  const coin = (await (await fetch(`${NODE}/v1/contracts`)).json()).contracts.at(-1);
+  const allowing = ask(app, "window.qubits.call", { contract: coin, function: "approve", args: [AMM, "1000000000000000000000"] });
+  window = await approval();
+  await press(window, "Approve");
+  const allowed = await allowing;
+  await closed(window);
+  await landed(app, allowed.ok?.id);
+  const selling = ask(app, "window.qubits.call", {
+    contract: AMM,
+    function: "swap",
+    args: [coin, "native", "1000000000000000000000", "1", "deadline:600"],
+  });
+  window = await approval();
+  await untilButton(window, "Approve");
+  const sellScreen = await text(window);
+  check("selling it shows the Qubits that come back", /you get\s+[\d.]+ Qubits/i.test(sellScreen), sellScreen);
+  await shot(window, "04c-sell");
+  await press(window, "Approve");
+  const sold = await selling;
+  await closed(window);
+  check("and the sale lands, done", (await landed(app, sold.ok?.id)).ok?.receipt?.outcome === "done", sold);
+
   const giving = ask(app, "window.qubits.call", {
-    contract: QUSD,
+    contract: TOKEN,
     function: "approve",
     args: [ALICE, "170141183460469231731687303715884105727"],
   });
   window = await approval();
   await untilButton(window, "Approve");
   const warned = await text(window);
-  check("an unlimited approval is called what it is", /all your qUSD, now and later/.test(warned), warned);
+  check("an unlimited approval is called what it is", /all your EXT, now and later/.test(warned), warned);
   await shot(window, "05-approve-everything");
   await press(window, "Refuse");
   await giving;
@@ -363,7 +412,7 @@ try {
 
   // a tab that goes away takes its request with it
   const leaving = await site("https://app.qubits.sh/");
-  void ask(leaving, "window.qubits.call", { contract: QUSD, function: "transfer", args: [ALICE, "1"] }).catch(() => {});
+  void ask(leaving, "window.qubits.call", { contract: TOKEN, function: "transfer", args: [ALICE, "1"] }).catch(() => {});
   window = await approval();
   await untilButton(window, "Approve");
   await leaving.close();
@@ -375,6 +424,10 @@ try {
   await home.reload({ waitUntil: "load" });
   await home.setViewport({ width: 360, height: 600, deviceScaleFactor: 2 });
   await untilButton(home, "Log out");
+  const found = await home
+    .waitForFunction(() => /QCAT/.test(document.body.innerText), { timeout: 20_000 })
+    .then(() => true, () => false);
+  check("the wallet finds the token it made", found, await text(home));
   await shot(home, "05b-home");
   await press(home, "Log out");
   await untilButton(home, "Unlock");
@@ -384,7 +437,7 @@ try {
   const keys = await home.evaluate(async () => (await chrome.storage.local.get("wallet")).wallet.accounts.length);
   check("the account is still here", keys === 1);
   check("and the site is still connected", (await ask(app, "window.qubits.accounts")).ok?.[0] === ME);
-  const lockedCall = ask(app, "window.qubits.call", { contract: QUSD, function: "transfer", args: [ALICE, "1"] });
+  const lockedCall = ask(app, "window.qubits.call", { contract: TOKEN, function: "transfer", args: [ALICE, "1"] });
   window = await approval();
   await window.waitForSelector("input[type=password]");
   check("after logging out a site's request asks for the password", true);
@@ -409,7 +462,7 @@ try {
   await home.waitForFunction(() => document.getElementById("status").textContent === "", { timeout: 4_000 });
   check("and goes away by itself", true);
   check("disconnecting takes the site's view away", (await ask(app, "window.qubits.accounts")).ok?.length === 0);
-  const after = await ask(app, "window.qubits.call", { contract: QUSD, function: "transfer", args: [ALICE, "1"] });
+  const after = await ask(app, "window.qubits.call", { contract: TOKEN, function: "transfer", args: [ALICE, "1"] });
   check("and its calls with it", after.code === 4100, after);
 } catch (error) {
   failures.push("the walk stopped");

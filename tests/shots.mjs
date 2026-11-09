@@ -184,7 +184,7 @@ await click("Back");
 await until("Send");
 
 // Tokens: add one by its address, send it. `contracts.txt` says where the demo chain has them.
-const tokenAddress = readFileSync(`${DEMO}/contracts.txt`, "utf8").match(/^qusd (\S+)/m)?.[1];
+const tokenAddress = readFileSync(`${DEMO}/contracts.txt`, "utf8").match(/^token (\S+)/m)?.[1];
 if (tokenAddress) {
   await click("Tokens");
   await until("Hide");

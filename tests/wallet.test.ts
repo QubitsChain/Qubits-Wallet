@@ -381,27 +381,27 @@ describe("sign, check, submit", () => {
 const hex = (text: string) => Buffer.from(text).toString("hex");
 const CONTRACT = "qb1vealhtjgvexg3cwye4vfj79ks33gj2f03kau8dne6uqwy5hur6esqyse9d";
 const CONTRACT_BYTES = "667bfbae48664c88e1c4cd589978b6846289292f8dbbc3b679d700e252fc1eb3";
-const QUSD_VIEWS = {
-  name: { output: hex("Qubits Dollar") },
-  symbol: { output: hex("qUSD") },
+const EXAMPLE_VIEWS = {
+  name: { output: hex("Example Token") },
+  symbol: { output: hex("EXT") },
   decimals: { output: "0600000000000000" },
   // 1,500,000 in 16 little-endian bytes
   balance_of: { output: "60e31600000000000000000000000000" },
 };
-const QUSD: Token = {
+const EXAMPLE: Token = {
   chain: status.genesis_hash,
   contract: CONTRACT,
-  name: "Qubits Dollar",
-  symbol: "qUSD",
+  name: "Example Token",
+  symbol: "EXT",
   decimals: 6,
 };
 
 describe("tokens", () => {
   it("adds a token by asking its contract what it is", async () => {
-    const { wallet, saved } = await funded({}, { views: QUSD_VIEWS });
+    const { wallet, saved } = await funded({}, { views: EXAMPLE_VIEWS });
     const added = await wallet.addToken(saved, ` ${CONTRACT} `);
-    expect(added.tokens).toEqual([QUSD]);
-    expect((await wallet.load())!.tokens).toEqual([QUSD]);
+    expect(added.tokens).toEqual([EXAMPLE]);
+    expect((await wallet.load())!.tokens).toEqual([EXAMPLE]);
     await expect(wallet.addToken(added, CONTRACT)).rejects.toThrow("already here");
   });
 
@@ -410,10 +410,10 @@ describe("tokens", () => {
     await expect(nothing.wallet.addToken(nothing.saved, CONTRACT)).rejects.toThrow("no token at that address");
     await expect(nothing.wallet.addToken(nothing.saved, "qb1nonsense")).rejects.toThrow("Check the token address");
 
-    const other = await funded({}, { views: { ...QUSD_VIEWS, symbol: { outcome: "invalid" } } });
+    const other = await funded({}, { views: { ...EXAMPLE_VIEWS, symbol: { outcome: "invalid" } } });
     await expect(other.wallet.addToken(other.saved, CONTRACT)).rejects.toThrow("no token at that address");
 
-    const down = await funded({}, { views: { ...QUSD_VIEWS, symbol: 503 } });
+    const down = await funded({}, { views: { ...EXAMPLE_VIEWS, symbol: 503 } });
     await expect(down.wallet.addToken(down.saved, CONTRACT)).rejects.toThrow("busy");
   });
 
@@ -424,53 +424,53 @@ describe("tokens", () => {
       { name: { output: "" } },
       { decimals: { output: "2700000000000000" } },
     ]) {
-      const { wallet, saved } = await funded({}, { views: { ...QUSD_VIEWS, ...views } });
+      const { wallet, saved } = await funded({}, { views: { ...EXAMPLE_VIEWS, ...views } });
       await expect(wallet.addToken(saved, CONTRACT)).rejects.toThrow("like a token");
     }
   });
 
   it("keeps tokens to their chain, and forgets them on request", async () => {
-    const { wallet, saved } = await funded({}, { views: QUSD_VIEWS });
-    const elsewhere = { ...QUSD, chain: "00".repeat(32) };
-    const both = { ...saved, tokens: [QUSD, elsewhere] };
-    expect(wallet.tokensOn(both, QUSD.chain)).toEqual([QUSD]);
-    expect(await wallet.holdings(both, QUSD.chain)).toEqual([{ token: QUSD, balance: "1500000" }]);
-    const fewer = await wallet.removeToken(both, QUSD);
-    expect(await wallet.holdings(fewer, QUSD.chain)).toEqual([]);
+    const { wallet, saved } = await funded({}, { views: EXAMPLE_VIEWS });
+    const elsewhere = { ...EXAMPLE, chain: "00".repeat(32) };
+    const both = { ...saved, tokens: [EXAMPLE, elsewhere] };
+    expect(wallet.tokensOn(both, EXAMPLE.chain)).toEqual([EXAMPLE]);
+    expect(await wallet.holdings(both, EXAMPLE.chain)).toEqual([{ token: EXAMPLE, balance: "1500000" }]);
+    const fewer = await wallet.removeToken(both, EXAMPLE);
+    expect(await wallet.holdings(fewer, EXAMPLE.chain)).toEqual([]);
     expect(wallet.tokensOn(fewer, elsewhere.chain)).toEqual([elsewhere]);
   });
 
   it("shows a token it can't read as unknown, not as zero", async () => {
-    const { wallet, saved } = await funded({}, { views: { ...QUSD_VIEWS, balance_of: 503 } });
-    const withToken = { ...saved, tokens: [QUSD] };
-    expect(await wallet.holdings(withToken, QUSD.chain)).toEqual([{ token: QUSD, balance: null }]);
+    const { wallet, saved } = await funded({}, { views: { ...EXAMPLE_VIEWS, balance_of: 503 } });
+    const withToken = { ...saved, tokens: [EXAMPLE] };
+    expect(await wallet.holdings(withToken, EXAMPLE.chain)).toEqual([{ token: EXAMPLE, balance: null }]);
   });
 
   it("builds the exact call a token expects", async () => {
     const { wallet, created } = await funded();
-    const { payload, sent } = wallet.tokenTransfer(created.address, "1.5", QUSD);
+    const { payload, sent } = wallet.tokenTransfer(created.address, "1.5", EXAMPLE);
     const words = addressToHex(created.address);
     expect(payload.call.contract).toBe(CONTRACT);
     expect(payload.call.function).toBe("transfer");
     expect(payload.call.amount).toBe("0");
     expect(payload.call.args).toBe(`${words}60e31600000000000000000000000000`);
-    expect(sent).toEqual({ to: created.address, amount: "1500000", symbol: "qUSD", decimals: 6 });
+    expect(sent).toEqual({ to: created.address, amount: "1500000", symbol: "EXT", decimals: 6 });
     expect(words).toHaveLength(64);
 
-    const big = wallet.tokenTransfer(created.address, "340282366920938463463374607431768211455", { ...QUSD, decimals: 0 });
+    const big = wallet.tokenTransfer(created.address, "340282366920938463463374607431768211455", { ...EXAMPLE, decimals: 0 });
     expect(big.payload.call.args.slice(64)).toBe("ff".repeat(16));
 
-    const cents = wallet.tokenTransfer(created.address, "1.5", { ...QUSD, decimals: 2 });
+    const cents = wallet.tokenTransfer(created.address, "1.5", { ...EXAMPLE, decimals: 2 });
     expect(cents.sent.amount).toBe("150");
-    expect(() => wallet.tokenTransfer(created.address, "1.555", { ...QUSD, decimals: 2 })).toThrow("at most 2 decimals");
-    expect(() => wallet.tokenTransfer("qb1nope", "1", QUSD)).toThrow("recipient");
-    expect(() => wallet.tokenTransfer(created.address, "0", QUSD)).toThrow("positive");
+    expect(() => wallet.tokenTransfer(created.address, "1.555", { ...EXAMPLE, decimals: 2 })).toThrow("at most 2 decimals");
+    expect(() => wallet.tokenTransfer("qb1nope", "1", EXAMPLE)).toThrow("recipient");
+    expect(() => wallet.tokenTransfer(created.address, "0", EXAMPLE)).toThrow("positive");
   });
 
   it("signs a token transfer for no more than it said", async () => {
     const { wallet, saved, created } = await funded();
     const { status: chain, account: me } = await wallet.overview(saved);
-    const { payload, sent } = wallet.tokenTransfer(created.address, "1", QUSD);
+    const { payload, sent } = wallet.tokenTransfer(created.address, "1", EXAMPLE);
     const prepared = await wallet.prepare(saved, PASSWORD, "owner", payload);
     const tx = prepared.decoded.tx;
     expect(tx.payload).toEqual(payload);
@@ -486,7 +486,7 @@ describe("tokens", () => {
 
   it("counts what a call cost in the end, not what it paid up front", async () => {
     const { wallet, saved, created } = await funded({}, { receipt: { gas_used: 180_000 } });
-    const { payload, sent } = wallet.tokenTransfer(created.address, "1", QUSD);
+    const { payload, sent } = wallet.tokenTransfer(created.address, "1", EXAMPLE);
     const prepared = await wallet.prepare(saved, PASSWORD, "owner", payload);
     const recorded = await wallet.record(saved, prepared, Date.now(), { token: sent });
     const [entry] = wallet.activity(await wallet.settle(recorded));
@@ -498,7 +498,7 @@ describe("tokens", () => {
   it("says a call from a vault waits", async () => {
     const vault = { delay_ms: 60_000, recovery: null };
     const { wallet, saved, created } = await funded({ vault });
-    const { payload } = wallet.tokenTransfer(created.address, "1", QUSD);
+    const { payload } = wallet.tokenTransfer(created.address, "1", EXAMPLE);
     const prepared = await wallet.prepare(saved, PASSWORD, "owner", payload);
     const { account: me } = await wallet.overview(saved);
     expect(wallet.preview(prepared, me, 1_000).leavesAt).toBe(61_000);
@@ -507,7 +507,7 @@ describe("tokens", () => {
   it("doesn't call a failed contract call sent", async () => {
     const reason = { reverted: { reason: hex("balance too low") } };
     const { wallet, saved, created } = await funded({}, { receipt: { outcome: reason, gas_used: 100_000 } });
-    const { payload, sent } = wallet.tokenTransfer(created.address, "1", QUSD);
+    const { payload, sent } = wallet.tokenTransfer(created.address, "1", EXAMPLE);
     const prepared = await wallet.prepare(saved, PASSWORD, "owner", payload);
     const id = await wallet.submit(saved, prepared);
     expect(await wallet.waitIncluded(saved, id, 1_000, 10)).toEqual({ height: 9, failed: "balance too low" });
@@ -567,20 +567,20 @@ describe("finding tokens", () => {
   const NOT_A_TOKEN = "qb1xgwtkh0d2hq0xz6mk9ux6vj7xz9ta20rr7qsy833ha4l5phws9esgrurtm";
   const none = { balance_of: { output: "00".repeat(16) } };
   const chain = (contracts: Record<string, Record<string, Partial<Receipt> | number>>) => ({ contracts });
-  const THEIRS = { ...QUSD_VIEWS, symbol: { output: hex("OTHER") }, ...none };
+  const THEIRS = { ...EXAMPLE_VIEWS, symbol: { output: hex("OTHER") }, ...none };
   const HERE = status.genesis_hash;
 
   it("shows what the account holds, without anyone adding it", async () => {
-    const { wallet, saved } = await funded({}, chain({ [CONTRACT]: QUSD_VIEWS, [OTHER]: THEIRS, [NOT_A_TOKEN]: {} }));
+    const { wallet, saved } = await funded({}, chain({ [CONTRACT]: EXAMPLE_VIEWS, [OTHER]: THEIRS, [NOT_A_TOKEN]: {} }));
     const found = await wallet.discoverTokens(saved, HERE);
-    expect(found.tokens.map((t) => t.symbol)).toEqual(["qUSD", "OTHER"]);
+    expect(found.tokens.map((t) => t.symbol)).toEqual(["EXT", "OTHER"]);
     expect((await wallet.load())!.tokens).toHaveLength(2);
     const held = await wallet.holdings(found, HERE);
-    expect(held).toEqual([{ token: { ...QUSD, found: true }, balance: "1500000" }]);
+    expect(held).toEqual([{ token: { ...EXAMPLE, found: true }, balance: "1500000" }]);
   });
 
   it("asks each contract what it is once", async () => {
-    const { wallet, saved, node } = await funded({}, chain({ [CONTRACT]: QUSD_VIEWS, [NOT_A_TOKEN]: {} }));
+    const { wallet, saved, node } = await funded({}, chain({ [CONTRACT]: EXAMPLE_VIEWS, [NOT_A_TOKEN]: {} }));
     const first = await wallet.discoverTokens(saved, HERE);
     expect(first.notTokens).toEqual([{ chain: HERE, contract: NOT_A_TOKEN }]);
     node.asked.length = 0;
@@ -589,13 +589,13 @@ describe("finding tokens", () => {
   });
 
   it("leaves out a contract that describes itself strangely, and a node that is busy", async () => {
-    const strange = { ...QUSD_VIEWS, symbol: { output: hex("A SYMBOL FAR TOO LONG") } };
+    const strange = { ...EXAMPLE_VIEWS, symbol: { output: hex("A SYMBOL FAR TOO LONG") } };
     const odd = await funded({}, chain({ [CONTRACT]: strange }));
     const looked = await odd.wallet.discoverTokens(odd.saved, HERE);
     expect(looked.tokens).toEqual([]);
     expect(looked.notTokens).toHaveLength(1);
 
-    const busy = await funded({}, chain({ [CONTRACT]: { ...QUSD_VIEWS, name: 503 } }));
+    const busy = await funded({}, chain({ [CONTRACT]: { ...EXAMPLE_VIEWS, name: 503 } }));
     const later = await busy.wallet.discoverTokens(busy.saved, HERE);
     expect(later.tokens).toEqual([]);
     expect(later.notTokens).toEqual([]);
@@ -605,14 +605,14 @@ describe("finding tokens", () => {
   });
 
   it("keeps a hidden token hidden, and lets it be added back", async () => {
-    const { wallet, saved } = await funded({}, chain({ [CONTRACT]: QUSD_VIEWS }));
+    const { wallet, saved } = await funded({}, chain({ [CONTRACT]: EXAMPLE_VIEWS }));
     const found = await wallet.discoverTokens(saved, HERE);
     const hidden = await wallet.removeToken(found, found.tokens[0]!);
     expect(await wallet.holdings(hidden, HERE)).toEqual([]);
     const again = await wallet.discoverTokens(hidden, HERE);
     expect(await wallet.holdings(again, HERE)).toEqual([]);
     const back = await wallet.addToken(again, CONTRACT);
-    expect(await wallet.holdings(back, HERE)).toEqual([{ token: QUSD, balance: "1500000" }]);
+    expect(await wallet.holdings(back, HERE)).toEqual([{ token: EXAMPLE, balance: "1500000" }]);
   });
 
   it("keeps a token added by hand, even at zero", async () => {
@@ -624,7 +624,7 @@ describe("finding tokens", () => {
   });
 
   it("shows a found token it can't read, rather than losing it", async () => {
-    const { wallet, saved } = await funded({}, chain({ [CONTRACT]: { ...QUSD_VIEWS, balance_of: 503 } }));
+    const { wallet, saved } = await funded({}, chain({ [CONTRACT]: { ...EXAMPLE_VIEWS, balance_of: 503 } }));
     const found = await wallet.discoverTokens(saved, HERE);
     expect((await wallet.holdings(found, HERE))[0]?.balance).toBeNull();
   });

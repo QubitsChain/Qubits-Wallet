@@ -13,13 +13,13 @@ const [address] = await window.qubits.connect();        // the user agrees once 
 const quote = await window.qubits.view({
   contract: AMM,
   function: "quote",
-  args: ["native", QUSD, "1000000000000000000"],
+  args: ["native", TOKEN, "1000000000000000000"],
 });
 
 const { id } = await window.qubits.call({               // opens the approval window
   contract: AMM,
   function: "swap",
-  args: ["native", QUSD, "1000000000000000000", "950000", "deadline:600"],
+  args: ["native", TOKEN, "1000000000000000000", "950000", "deadline:600"],
   amount: "1000000000000000000",                        // 1 native token: it has 18 decimals
 });
 
